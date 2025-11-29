@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TamalApp - Control de Pedidos</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mexican: {
+                            pink: '#E4007C',
+                            yellow: '#FFD700',
+                            green: '#006847',
+                            clay: '#B54B26',
+                            dark: '#1a1a1a'
+                        }
+                    },
+                    backgroundImage: {
+                        'textil-pattern': "repeating-linear-gradient(45deg, #E4007C 0, #E4007C 10px, #ffffff 10px, #ffffff 20px)",
+                        'talavera': "radial-gradient(circle at 50% 50%, #006847 2px, transparent 2.5px)"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&family=Courier+Prime:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #fdf6e3;
+            background-image: radial-gradient(#d4a373 1px, transparent 1px);
+            background-size: 20px 20px;
+            overscroll-behavior-y: contain; 
+            -webkit-tap-highlight-color: transparent; /* Quita el brillo azul al tocar en Android */
+        }
+
+        .font-ticket { font-family: 'Courier Prime', monospace; }
+
+        .cintillo-mexicano {
+            height: 12px;
+            background: linear-gradient(90deg, #006847 33%, #ffffff 33%, #ffffff 66%, #E4007C 66%);
+            background-size: 60px 100%;
+        }
+
+        .card-shadow {
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .card-shadow:hover {
+            transform: translateY(-2px);
+            box-shadow: 12px 12px 0px rgba(228, 0, 124, 0.2);
+        }
+
+        /* Modal y animaciones */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="text-gray-800 pb-20 select-none">
+
+    <!-- Navbar -->
+    <div class="cintillo-mexicano w-full sticky top-0 z-40"></div>
+    <div class="bg-gray-900 text-white py-4 px-4 shadow-xl relative overflow-hidden border-b-4 border-mexican-pink z-30">
+        <div class="absolute inset-0 opacity-10 bg-talavera bg-[length:10px_10px]"></div>
+        <div class="max-w-7xl mx-auto flex items-center justify-between relative z-10">
+            <div class="flex items-center gap-4">
+                <div class="bg-gradient-to-br from-mexican-pink to-purple-600 p-3 rounded-2xl shadow-lg border-2 border-white transform -rotate-3">
+                    <i class="fas fa-utensils text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-3xl font-black tracking-tighter uppercase leading-none">TAMALAPP</h1>
+                    <p class="text-mexican-yellow font-bold uppercase text-[10px] mt-1">Control de Pedidos</p>
+                </div>
+            </div>
+            
+            <!-- Fecha Sistema -->
+            <div class="hidden md:block opacity-90">
+                <div class="bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm border border-white/20">
+                    <p class="font-bold text-xs text-mexican-pink" id="systemDate">--</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        
+        <!-- COLUMNA IZQUIERDA (Formularios) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Configuración y Datos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Precios -->
+                <div class="bg-white p-5 rounded-3xl border-2 border-gray-100 card-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-mexican-clay text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase">Precios</div>
+                    <h2 class="text-base font-extrabold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-tag text-mexican-clay mr-2"></i> CONFIGURACIÓN
+                    </h2>
+                    <div class="bg-orange-50 p-3 rounded-xl border border-orange-100 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold uppercase text-gray-500">General</label>
+                            <div class="relative w-24">
+                                <span class="absolute left-3 top-2 text-gray-400 font-bold">$</span>
+                                <input type="number" id="priceGeneral" value="20" onchange="recalc()" class="w-full pl-6 pr-2 py-1 bg-white border-2 border-orange-200 rounded-lg focus:border-mexican-clay outline-none font-bold text-right text-gray-800">
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold uppercase text-gray-500">Especial</label>
+                            <div class="relative w-24">
+                                <span class="absolute left-3 top-2 text-gray-400 font-bold">$</span>
+                                <input type="number" id="priceSpecial" value="25" onchange="recalc()" class="w-full pl-6 pr-2 py-1 bg-white border-2 border-orange-200 rounded-lg focus:border-mexican-clay outline-none font-bold text-right text-gray-800">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cliente -->
+                <div class="bg-white p-5 rounded-3xl border-2 border-gray-100 card-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-mexican-pink text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase">Cliente</div>
+                    <h2 class="text-base font-extrabold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-user text-mexican-pink mr-2"></i> DATOS
+                    </h2>
+                    <div class="space-y-3">
+                        <input type="text" id="customerName" placeholder="NOMBRE CLIENTE" class="w-full px-4 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-mexican-pink outline-none font-bold uppercase text-sm">
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="tel" id="customerPhone1" placeholder="CELULAR" class="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-mexican-pink outline-none font-bold text-sm">
+                            <input type="tel" id="customerPhone2" placeholder="OTRO (OPC)" class="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-mexican-pink outline-none font-bold text-sm">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="deliveryDate" class="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-gray-700 focus:border-mexican-pink outline-none">
+                            <input type="time" id="deliveryTime" class="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-gray-700 focus:border-mexican-pink outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pedido -->
+            <div class="bg-white p-5 rounded-3xl border-2 border-gray-100 card-shadow relative overflow-hidden">
+                <div class="absolute left-0 top-0 h-full w-2 bg-mexican-green"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-extrabold text-gray-800 flex items-center">
+                        <i class="fas fa-list-ol text-mexican-green mr-2"></i> PEDIDO
+                    </h2>
+                    <button onclick="addNewFlavorRow()" class="bg-green-100 text-mexican-green hover:bg-mexican-green hover:text-white px-3 py-2 rounded-xl text-[10px] font-bold transition-all transform active:scale-95 flex items-center gap-1 border border-green-200">
+                        <i class="fas fa-plus"></i> AGREGAR
+                    </button>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                    <div class="grid grid-cols-12 gap-2 text-[9px] font-black text-gray-400 mb-2 uppercase tracking-wider px-1">
+                        <div class="col-span-6">Sabor</div>
+                        <div class="col-span-2 text-center">Tipo</div>
+                        <div class="col-span-3 text-center">Cant.</div>
+                        <div class="col-span-1"></div>
+                    </div>
+                    <div id="flavorsContainer" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA (Resumen) -->
+        <div class="lg:col-span-4 pb-10">
+            <div class="sticky top-4">
+                <div class="bg-gray-900 text-white rounded-3xl shadow-2xl p-1 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-mexican-pink via-purple-600 to-mexican-yellow opacity-50"></div>
+                    <div class="relative bg-gray-900 rounded-[22px] p-6">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center border-b border-gray-800 pb-2">TOTAL A COBRAR</h3>
+                        
+                        <div class="text-center mb-6">
+                            <span class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-mexican-yellow to-orange-400 tracking-tight" id="uiTotalMoney">$0.00</span>
+                            <p class="text-[10px] text-gray-400 mt-1 font-mono" id="uiTotalQty">0 PIEZAS</p>
+                        </div>
+
+                        <!-- Botón para Previsualizar -->
+                        <button onclick="prepareTicketPreview()" class="group w-full relative overflow-hidden bg-mexican-pink hover:bg-pink-600 text-white py-4 rounded-xl shadow-lg font-bold text-sm uppercase tracking-wide transition-all transform hover:-translate-y-1 active:scale-95">
+                            <span class="relative z-10 flex justify-center items-center gap-2">
+                                <i class="fas fa-check-circle text-xl"></i> FINALIZAR
+                            </span>
+                        </button>
+
+                        <button onclick="resetAll()" class="w-full mt-4 py-2 text-gray-600 text-[10px] uppercase font-bold hover:text-white transition flex items-center justify-center gap-2 opacity-60 hover:opacity-100">
+                            <i class="fas fa-trash"></i> Limpiar Todo
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="loading" class="hidden mt-4 bg-white/90 backdrop-blur rounded-xl p-4 text-center shadow-lg border border-mexican-pink/30 animate-pulse">
+                    <i class="fas fa-circle-notch fa-spin text-mexican-pink text-2xl mb-1"></i>
+                    <p class="text-[10px] font-bold text-gray-600">PROCESANDO...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL FINAL (NUEVA ESTRATEGIA) -->
+    <!-- ========================================== -->
+    <div id="previewModal" class="fixed inset-0 z-[100] hidden modal-overlay flex flex-col justify-center items-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden relative max-h-[90vh]">
+            
+            <!-- Cabecera -->
+            <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 text-sm uppercase"><i class="fas fa-receipt text-mexican-pink mr-2"></i> Pedido Listo</h3>
+                <button onclick="closePreview()" class="text-gray-400 hover:text-red-500 text-xl w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Imagen del Ticket (Scrollable) -->
+            <div class="flex-grow overflow-y-auto bg-gray-200 p-4 flex justify-center">
+                <div id="finalTicketImageContainer" class="shadow-xl border-4 border-white transform transition-transform">
+                    <!-- IMG aquí -->
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="p-4 bg-white border-t border-gray-200">
+                
+                <p class="text-xs text-center text-gray-500 mb-3 px-2">
+                    <i class="fas fa-info-circle text-blue-500"></i> Se descargará la imagen y se abrirá WhatsApp con el resumen.
+                </p>
+
+                <!-- BOTÓN PRINCIPAL: WHATSAPP + DESCARGA -->
+                <button onclick="sendWhatsAppAndDownload()" class="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-transform active:scale-95 mb-3">
+                    <i class="fab fa-whatsapp text-2xl"></i>
+                    <span>ENVIAR POR WHATSAPP</span>
+                </button>
+
+                <!-- Solo Descargar -->
+                <button onclick="forceDownload()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-2">
+                    <i class="fas fa-download"></i> Solo Guardar Imagen
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- TICKET OCULTO (GENERADOR) -->
+    <!-- ========================================== -->
+    <div id="ticketContainer" style="position: fixed; top: -5000px; left: -5000px; width: 450px; z-index: 99999;">
+        <div id="ticketContent" class="bg-white px-6 py-8 text-black relative overflow-hidden" style="width: 100%; min-height: 500px;">
+            <div class="absolute inset-0 opacity-[0.05]" style="background-image: url('https://www.transparenttextures.com/patterns/az-subtle.png');"></div>
+            
+            <div class="text-center border-b-2 border-black pb-3 mb-3 relative z-10">
+                <h1 class="text-2xl font-black uppercase tracking-tighter leading-none mb-1">TAMALAPP</h1>
+                <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">CONTROL DE PEDIDOS</p>
+                <p class="text-[10px] font-mono mt-2">FOLIO: <span id="folioNum" class="font-bold">0000</span></p>
+            </div>
+
+            <div class="mb-4 font-ticket text-xs relative z-10 space-y-2">
+                <div class="flex justify-between border-b border-gray-300 pb-1">
+                    <span class="font-bold text-gray-500 text-[10px]">FECHA:</span>
+                    <span id="ticketEmissionDate" class="font-bold">--</span>
+                </div>
+                
+                <div>
+                    <span class="font-bold text-gray-500 text-[10px] block">CLIENTE:</span>
+                    <div id="ticketClientName" class="uppercase font-bold text-base">--</div>
+                    <div id="ticketClientPhone" class="font-mono text-xs mt-1 text-gray-600">--</div>
+                </div>
+
+                <div class="bg-gray-100 p-2 border-l-4 border-black">
+                    <span class="font-bold text-[9px] uppercase text-gray-500 block">ENTREGA:</span>
+                    <p id="ticketDeliveryFull" class="text-xs uppercase font-bold leading-tight">--</p>
+                </div>
+            </div>
+
+            <table class="w-full mb-4 font-ticket text-xs relative z-10">
+                <thead>
+                    <tr class="border-b-2 border-black">
+                        <th class="text-left py-1 w-8">CANT</th>
+                        <th class="text-left py-1">DESCRIPCIÓN</th>
+                        <th class="text-right py-1 w-14">$$</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketTbody"></tbody>
+            </table>
+
+            <div class="border-t-2 border-black pt-2 mb-2 relative z-10">
+                <div class="flex justify-between items-center text-xl font-bold font-ticket">
+                    <span>TOTAL:</span>
+                    <span id="ticketTotalNum">$0.00</span>
+                </div>
+                <div class="text-right text-[9px] font-bold text-gray-400">PESOS MEXICANOS</div>
+            </div>
+            
+            <div class="mt-1 mb-6 relative z-10">
+                <p id="ticketTotalLetters" class="text-[9px] font-mono leading-tight uppercase text-gray-600">--</p>
+            </div>
+
+            <div class="text-center text-[9px] font-ticket text-gray-400 mt-auto pt-2 border-t border-dashed border-gray-300 relative z-10">
+                <p class="font-bold">*** GRACIAS POR SU PREFERENCIA ***</p>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DATA ---
+        let flavors = [
+            { id: 1, name: 'Verde', type: 'general', qty: 0 },
+            { id: 2, name: 'Mole', type: 'general', qty: 0 },
+            { id: 3, name: 'Rajas', type: 'general', qty: 0 },
+            { id: 4, name: 'Blancos', type: 'special', qty: 0 }
+        ];
+        
+        // Estado
+        let currentTicketBlob = null;
+        let currentTicketFileName = "";
+        let whatsappMessage = "";
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFlavors();
+            setDates();
+            document.getElementById('folioNum').innerText = Math.floor(10000 + Math.random() * 90000);
+        });
+
+        function setDates() {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const delEl = document.getElementById('deliveryDate');
+            if(delEl) delEl.value = today;
+            
+            const sysEl = document.getElementById('systemDate');
+            if(sysEl) sysEl.innerText = now.toLocaleDateString('es-MX', {day:'numeric', month:'short', year:'2-digit'}).toUpperCase();
+        }
+
+        // --- RENDER ---
+        function renderFlavors() {
+            const container = document.getElementById('flavorsContainer');
+            container.innerHTML = '';
+            flavors.forEach((item, index) => {
+                const isFixed = index < 4;
+                const div = document.createElement('div');
+                div.className = "grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm";
+                div.innerHTML = `
+                    <div class="col-span-6">
+                        ${isFixed 
+                            ? `<span class="font-bold text-gray-700 pl-1 text-[10px] md:text-xs uppercase block truncate">${item.name}</span>`
+                            : `<input type="text" value="${item.name}" onchange="updateFlavorName(${index}, this.value)" class="w-full bg-gray-50 border border-gray-200 rounded px-1 py-1 text-[10px] font-bold text-gray-700 uppercase outline-none" placeholder="SABOR">`
+                        }
+                    </div>
+                    <div class="col-span-2">
+                        <select onchange="updateFlavorType(${index}, this.value)" class="w-full text-[9px] bg-gray-50 border border-gray-200 rounded py-1 px-0 font-bold text-gray-500 outline-none text-center">
+                            <option value="general" ${item.type === 'general' ? 'selected' : ''}>GEN</option>
+                            <option value="special" ${item.type === 'special' ? 'selected' : ''}>ESP</option>
+                        </select>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" min="0" value="${item.qty}" oninput="updateFlavorQty(${index}, this.value)" class="w-full text-center font-bold text-sm bg-white border-b-2 border-gray-200 focus:border-mexican-pink outline-none text-gray-800 py-0">
+                    </div>
+                    <div class="col-span-1 flex justify-center">
+                        ${!isFixed 
+                            ? `<button onclick="removeFlavor(${index})" class="text-red-400"><i class="fas fa-times"></i></button>` 
+                            : ``
+                        }
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            recalc();
+        }
+
+        function addNewFlavorRow() { flavors.push({ id: Date.now(), name: '', type: 'general', qty: 0 }); renderFlavors(); }
+        function removeFlavor(index) { flavors.splice(index, 1); renderFlavors(); }
+        function updateFlavorQty(index, val) { flavors[index].qty = parseInt(val) || 0; recalc(); }
+        function updateFlavorType(index, val) { flavors[index].type = val; recalc(); }
+        function updateFlavorName(index, val) { flavors[index].name = val; }
+
+        function recalc() {
+            const priceGen = parseFloat(document.getElementById('priceGeneral').value) || 0;
+            const priceSpec = parseFloat(document.getElementById('priceSpecial').value) || 0;
+            let totalQty = 0;
+            let totalMoney = 0;
+            
+            // Reconstruimos el mensaje de WhatsApp aquí
+            let msgDetails = "";
+
+            flavors.forEach(f => {
+                if(f.qty > 0) {
+                    const price = f.type === 'general' ? priceGen : priceSpec;
+                    totalQty += f.qty;
+                    totalMoney += (f.qty * price);
+                    // Agregar al mensaje
+                    msgDetails += `%0A• ${f.qty} ${f.name || 'Sabor'} ($${f.qty * price})`;
+                }
+            });
+
+            document.getElementById('uiTotalQty').innerText = totalQty + " PZS";
+            document.getElementById('uiTotalMoney').innerText = formatCurrency(totalMoney);
+            
+            return { totalMoney, totalQty, priceGen, priceSpec, msgDetails };
+        }
+
+        // --- PREPARAR MODAL ---
+        async function prepareTicketPreview() {
+            const customer = document.getElementById('customerName').value.trim();
+            const calcData = recalc();
+
+            if(!customer) return alert("Falta Nombre Cliente");
+            if(calcData.totalQty === 0) return alert("Pedido Vacío");
+
+            // UI
+            const loading = document.getElementById('loading');
+            loading.classList.remove('hidden');
+
+            // 1. Rellenar HTML Oculto
+            const now = new Date();
+            document.getElementById('ticketEmissionDate').innerText = now.toLocaleString('es-MX');
+            document.getElementById('ticketClientName').innerText = customer;
+            
+            const p1 = document.getElementById('customerPhone1').value;
+            const p2 = document.getElementById('customerPhone2').value;
+            document.getElementById('ticketClientPhone').innerText = (p1 || "") + (p2 ? " / "+p2 : "");
+
+            // Fecha Entrega Texto
+            const dDate = document.getElementById('deliveryDate').value;
+            const dTime = document.getElementById('deliveryTime').value;
+            let dText = "PENDIENTE";
+            if(dDate) {
+                const [y,m,d] = dDate.split('-');
+                dText = `${d}/${m}/${y}`;
+                if(dTime) {
+                    const [th, tm] = dTime.split(':');
+                    const h = parseInt(th);
+                    const suf = h>=12 ? 'PM':'AM';
+                    dText += ` - ${h%12||12}:${tm} ${suf}`;
+                }
+            }
+            document.getElementById('ticketDeliveryFull').innerText = dText;
+
+            // Tabla
+            const tbody = document.getElementById('ticketTbody');
+            tbody.innerHTML = '';
+            flavors.forEach(f => {
+                if(f.qty > 0) {
+                    const p = f.type==='general'?calcData.priceGen:calcData.priceSpec;
+                    tbody.innerHTML += `
+                        <tr class="border-b border-dotted border-gray-300">
+                            <td class="py-1 font-bold align-top">${f.qty}</td>
+                            <td class="py-1 uppercase align-top leading-none">${f.name}<br><span class="text-[8px] text-gray-500">$${p} c/u</span></td>
+                            <td class="py-1 text-right font-bold align-top">$${(f.qty*p).toFixed(0)}</td>
+                        </tr>`;
+                }
+            });
+
+            document.getElementById('ticketTotalNum').innerText = formatCurrency(calcData.totalMoney);
+            document.getElementById('ticketTotalLetters').innerText = numeroALetras(calcData.totalMoney);
+
+            // 2. Preparar Mensaje WhatsApp (Texto)
+            whatsappMessage = `Hola *${customer}*, aquí está el detalle de tu pedido:%0A`;
+            whatsappMessage += `📅 Entrega: ${dText}%0A`;
+            whatsappMessage += `------------------`;
+            whatsappMessage += calcData.msgDetails; // Detalles calculados en recalc()
+            whatsappMessage += `%0A------------------%0A`;
+            whatsappMessage += `*TOTAL: ${formatCurrency(calcData.totalMoney)}*`;
+
+            // 3. Generar Imagen
+            try {
+                await new Promise(r => setTimeout(r, 200));
+                const canvas = await html2canvas(document.getElementById('ticketContent'), {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    useCORS: true
+                });
+
+                canvas.toBlob(blob => {
+                    currentTicketBlob = blob;
+                    const safeName = customer.replace(/[^a-z0-9]/gi, '').substring(0,10);
+                    currentTicketFileName = `PEDIDO_${safeName}.png`;
+                    
+                    const imgUrl = URL.createObjectURL(blob);
+                    document.getElementById('finalTicketImageContainer').innerHTML = `<img src="${imgUrl}" class="w-full h-auto block">`;
+                    
+                    loading.classList.add('hidden');
+                    document.getElementById('previewModal').classList.remove('hidden');
+                }, 'image/png');
+
+            } catch(e) {
+                console.error(e);
+                alert("Error generando imagen");
+                loading.classList.add('hidden');
+            }
+        }
+
+        // --- ACCIÓN DOBLE: WHATSAPP TEXTO + DESCARGA IMAGEN ---
+        function sendWhatsAppAndDownload() {
+            // 1. Descargar Imagen (Para que el usuario la tenga lista para adjuntar)
+            forceDownload();
+
+            // 2. Abrir WhatsApp con el texto del resumen
+            // Usamos un pequeño timeout para dar tiempo a que inicie la descarga
+            setTimeout(() => {
+                const url = `https://api.whatsapp.com/send?text=${whatsappMessage}`;
+                window.open(url, '_blank');
+            }, 500);
+        }
+
+        function forceDownload() {
+            if(!currentTicketBlob) return;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(currentTicketBlob);
+            link.download = currentTicketFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        function resetAll() {
+            if(confirm('¿Limpiar todo?')) {
+                flavors.forEach(f => f.qty=0);
+                document.getElementById('customerName').value='';
+                renderFlavors();
+            }
+        }
+
+        // Utils
+        function formatCurrency(n) { return new Intl.NumberFormat('es-MX', {style:'currency', currency:'MXN', minimumFractionDigits:2}).format(n); }
+        function numeroALetras(n) { return `(SON: ${n.toFixed(2)} MXN)`; } // Simplificado para ahorrar espacio en ticket móvil
+
+    </script>
+</body>
+</html>
